@@ -3,25 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 
 using UnityEngine;
-using DG.Tweening;
 
 public class HeelsManager : MonoBehaviour
 {
-    public static event EventHandler<HeelsLengthChangedEventArgs> HeelsLengthChanged;
+    #region Events
+    public static event EventHandler<HeelsHeightChangedEventArgs> HeelsHeightChanged;
+    #endregion
 
     public List<ConstraintedHeel> heels { get; set; }
-
     public Transform ground { get; set; }
 
     public float lengthPerSizing { get; set; }
-    public float sizingDuration { get; set; }
+    private const float DefaultLengthPerSizing = .1f;
 
-    private const float defaultLengthPerSizing = .1f;
+    public Bounds bounds => heels.First().transform.GetComponent<Renderer>().bounds;
 
-    public Bounds bounds { get { return heels.First().transform.GetComponent<Renderer>().bounds; } }
-    public Vector3 heelExtents { get { return bounds.extents; } }
-    public Vector3 heelSize { get { return bounds.size; } }
-
+    #region MonoBehaviour Methods
     private void Awake()
     {
         EventManager.HeelsCollision += OnHeelsCollide;
@@ -29,35 +26,45 @@ public class HeelsManager : MonoBehaviour
 
     private void Start()
     {
-        heels.ForEach((heel) => heel.positionStrategy.SetPivot(y: -heelExtents.y));
+        heels.ForEach((heel) => heel.positionStrategy.SetPivot(y: -bounds.extents.y));
     }
 
-    private void OnHeelsCollide(object sender, HeelsCollideEventArgs args)
+    #endregion
+
+    #region Event Listeners
+
+    private void OnHeelsCollide(object sender, HeelsCollideEventArgs heelsCollision)
     {
-        float length = lengthPerSizing;
-        HeelsLengthChangeType type = HeelsLengthChangeType.INCREASE;
-
-        if (args.collideType.Equals(HeelsCollideType.OBSTACLE))
+        switch (heelsCollision.collideType)
         {
-            type = HeelsLengthChangeType.DECREASE;
-            length *= -1;
+            case HeelsCollideType.HEELS:
+                SetHeelsHeight(lengthPerSizing);
+                HeelsHeightChanged?.Invoke(this,
+                    new HeelsHeightChangedEventArgs(HeelsHeightChangeType.Increase,
+                        bounds.size.y));
+                break;
+            case HeelsCollideType.OBSTACLE:
+                SetHeelsHeight(-lengthPerSizing);
+                HeelsHeightChanged?.Invoke(this,
+                    new HeelsHeightChangedEventArgs(HeelsHeightChangeType.Decrease,
+                        bounds.size.y));
+                break;
         }
-
-        SetHeelsHeight(length);
-        HeelsLengthChanged?.Invoke(this, new HeelsLengthChangedEventArgs(type, bounds));
     }
+
+    #endregion
 
     private void SetHeelsHeight(float length, int times = 1)
     {
         heels.ForEach((heel) =>
         {
-            float stableLength = length.Equals(0) ? defaultLengthPerSizing : length;
+            float stableLength = length.Equals(0) ? DefaultLengthPerSizing : length;
             stableLength *= times;
             float endValue = heel.transform.localScale.y + stableLength;
 
-            float pivot = endValue > heel.transform.localScale.y ? -heelExtents.y : heelExtents.y;
-            heel.transform.DOScaleY(endValue, sizingDuration)
-                .OnComplete(() => heel.positionStrategy.SetPivot(y: pivot));
+            float pivot = endValue > heel.transform.localScale.y ? -bounds.extents.y : bounds.extents.y;
+            heel.transform.localScale = new Vector3(heel.transform.localScale.x, endValue, heel.transform.localScale.z);
+            heel.positionStrategy.SetPivot(y: pivot);
         });
     }
 }

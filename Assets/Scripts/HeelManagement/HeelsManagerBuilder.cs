@@ -11,7 +11,6 @@ public class HeelsManagerBuilder : MonoBehaviour
     [SerializeField] private Transform _ground;
 
     [SerializeField] private float lengthPerSizing;
-    [SerializeField] private float sizingDuration = .25f;
     [SerializeField, Range(.0f, 1.0f)] private float parentConstraintWeight = .25f;
 
     private List<ConstraintedHeel> heels;
@@ -46,7 +45,6 @@ public class HeelsManagerBuilder : MonoBehaviour
         heelsManager.heels = heels;
         heelsManager.ground = _ground;
         heelsManager.lengthPerSizing = lengthPerSizing;
-        heelsManager.sizingDuration = sizingDuration;
 
         Destroy(this);
     }

@@ -4,13 +4,11 @@ public class PlayerController : MonoBehaviour
 {
     [SerializeField] private Transform _ground;
 
-    [SerializeField] private float forwardSpeed;
-    [SerializeField] private float sidewardSpeed;
+    [SerializeField] private float _forwardSpeed;
+    [SerializeField] private float _sidewardSpeed;
 
     private Transform _collector;
-
     private Camera _camera;
-
     private Animator _animator;
 
     private void Awake()
@@ -19,9 +17,10 @@ public class PlayerController : MonoBehaviour
         _camera = Camera.main;
         _collector = transform.Find("Collector");
 
-        EventManager.HeelsLengthChanged += OnHeelsLengthChanged;
+        EventManager.HeelsHeightChanged += OnHeelsHeightChanged;
     }
 
+    #region MonoBehaviour Methods
     private void Start()
     {
         Transform oneOfTheHeels = FindObjectOfType<HeelsManager>().heels[0].transform;
@@ -30,18 +29,24 @@ public class PlayerController : MonoBehaviour
 
     private void LateUpdate()
     {
-        Move();
+        MoveLateral();
         Run();
     }
 
+    #endregion
+
+    #region Movement
+
     private void Run()
     {
-        transform.Translate(0, 0, Time.deltaTime * forwardSpeed);
+        transform.Translate(0, 0, Time.deltaTime * _forwardSpeed);
     }
 
-    private void Move()
+    private void MoveLateral()
     {
-        _animator.SetFloat("_speed", forwardSpeed);
+        _animator.SetFloat("_speed", _forwardSpeed);
+
+        if (!Input.GetButton("Fire1")) return;
 
         Vector3 mousePosition = Input.mousePosition;
         mousePosition.z = _camera.transform.position.z;
@@ -57,22 +62,28 @@ public class PlayerController : MonoBehaviour
 
             transform.position = Vector3.MoveTowards(transform.position,
                                                      hitPoint,
-                                                     Time.deltaTime * sidewardSpeed);
+                                                     Time.deltaTime * _sidewardSpeed);
         }
     }
 
-    private void OnHeelsLengthChanged(object sender, HeelsLengthChangedEventArgs args)
+    #endregion
+
+    #region Event Listeners
+
+    private void OnHeelsHeightChanged(object sender, HeelsHeightChangedEventArgs args)
     {
-        float diff = args.bounds.size.y;
-        if (args.changeType.Equals(HeelsLengthChangeType.INCREASE)) diff *= -1;
+        float diff = args.diff;
+        if (args.changeType.Equals(HeelsHeightChangeType.Decrease)) diff *= -1;
 
         transform.position = new Vector3(transform.position.x,
-                                         _ground.position.y - diff,
+                                         _ground.position.y + diff,
                                          transform.position.z);
 
         _collector.GetComponent<BoxCollider>()
-            .center = new Vector3(0, diff, 0);
+            .center = new Vector3(0, -diff, 0);
     }
+
+    #endregion
 
     private void StartOnMidPoint(float level)
     {
